@@ -1,0 +1,52 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "SecuritySRVRs2",
+    "version": "1.0"
+  },
+  "servers": [
+    {
+      "url": "https://stg.api.realogyfg.com",
+      "description": "Staging server"
+    },
+    {
+      "url": "https://qa.api.realogyfg.com",
+      "description": "QA server"
+    },
+    {
+      "url": "https://api.realogyfg.com",
+      "description": "Production server"
+    }
+  ],
+  "security": [
+    {
+      "apiKeyHeader": [],
+      "oauth2OKTA Security API": [
+        "https://btt.realogyfg.com/securityapi"
+      ]
+    },
+    {
+      "apiKeyQuery": [],
+      "oauth2OKTA Security API": [
+        "https://btt.realogyfg.com/securityapi"
+      ]
+    }
+  ],
+  "paths": {
+    "/echo": {
+      "get": {
+        "description": "View Request Header and Body",
+        "operationId": "ViewRequest",
+        "summary": "ViewRequest",
+        "tags": [
+          "Echo"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"}
+        }
+      }
+    } },
+   "tags": []
+}
