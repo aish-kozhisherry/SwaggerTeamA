@@ -58,7 +58,7 @@ For ($i=0; $i -lt $temp.Length; $i++)
                     $bodyJson=$body | ConvertFrom-Json
                     Write-Output $bodyJson
                     $bodyString=$bodyJson | ConvertTo-Json -Depth 100
-                    Writ e-Output $bodyString
+                    Write-Output $bodyString
                     $user="Aishwarya.Kozhisherry@realogy.com"
                     $token="cy5rib7nmobljcdnsld3rdrete27i4m4lk2f4lepo3kti3ev25ja"
                     $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $user,$token)))
