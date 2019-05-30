@@ -44,7 +44,7 @@ For ($i=0; $i -lt $temp.Length; $i++)
           $result = $responseFromGet.result
           Write-Host "Status: " + $status  
           Write-Host "result" + $result
-              if ($result -eq "succeeded") 
+              while ($result -eq "succeeded") 
 			    {
 				echo "Swagger-spec validation for $outputFile succeeded, now proceeding to Import into Swaggerhub"
                 $body = '
@@ -81,7 +81,7 @@ For ($i=0; $i -lt $temp.Length; $i++)
                        $result= $responseFromGet.result
                        Write-Host "Status: " + $status  
                        Write-Host "result" + $result
-					   if ($result -eq "succeeded") 
+					   while ($result -eq "succeeded") 
 			               {
 						   echo "Import into Swaggerhub for $outputFile succeeded, now proceeding to Get Proxyname"
                            $body = '
@@ -118,7 +118,7 @@ For ($i=0; $i -lt $temp.Length; $i++)
                                  $result= $responseFromGet.result
                                  Write-Host "Status: " + $status  
                                  Write-Host "result" + $result
-								 if ($result -eq "succeeded") 
+								 while ($result -eq "succeeded") 
 			                        {
 						            echo "Get Proxyname for $outputFile succeeded, now proceeding to Convert into Proxy"
                                     $body = '
