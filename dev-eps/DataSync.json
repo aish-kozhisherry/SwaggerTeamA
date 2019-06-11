@@ -1,0 +1,3027 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "DataSynctest",
+    "version": "2.0",
+    "description": "Use the DataSync API to synchronize your local data store with the data maintained by Realogy. Use the \"active\" method to do a one-time initialization of your data store and use the \"Delta\" method for each entity type for ongoing synchronization. Details on how to use each of these methods can be found in the method descriptions. Any vendor should be performing the data synchronization as mentioned below: <ol><li>One time initialization &ndash; this should be done only once while initializing data into your system using the API for the first time.</li><ol><li>Call the GetActiveListings method. This method will give all the active listings in the system. This method will give listingId and the lastupdateon for all the listings in the system.</li><li>Now, call the GetListingById for each of the listings to get the details of the listings</li></ol><li>Ongoing synchronization &ndash;</li><ol><li>Call the Delta method for the listings (frequency can be 15 mins to 7 days but the recommended frequency is 30 mins to 2 hours)</li><li>Please add a two minute overlap between subsequent delta calls so that listings updated during the edge time is not missed</li><li>The Delta response will give the list of Listings that got changed along with the full details of the listing</li></ol><li>Periodic Reconciliation - This can be done weekly/biweekly/monthly to ensure that your system is in sync with ours</li><ol><li>Call the GetActiveListings method and for each listing, compare the lastupdateon date which you got in the Active Listings get with the one stored in your system (you should store the lastupdateon field from the Delta Response). Call the GetListingById method for those listings for which there is a difference in the lastupdateon time.</li></ol></ol>"
+  },
+  "host": "stg.api.realogyfg.com",
+  "basePath": "/datasync",
+  "schemes": [
+    "https"
+  ],
+  "securityDefinitions": {
+    "apiKeyHeader": {
+      "type": "apiKey",
+      "name": "Ocp-Apim-Subscription-Key",
+      "in": "header"
+    },
+    "apiKeyQuery": {
+      "type": "apiKey",
+      "name": "subscription-key",
+      "in": "query"
+    },
+    "oauth2Data Sync API": {
+      "type": "oauth2",
+      "scopes": {},
+      "flow": "application",
+      "tokenUrl": "https://uat.solo.realogyfg.com/sts/oauth2/token"
+    }
+  },
+  "security": [
+    {
+      "apiKeyHeader": [],
+      "oauth2Data Sync API": []
+    },
+    {
+      "apiKeyQuery": [],
+      "oauth2Data Sync API": []
+    }
+  ],
+  "paths": {
+    "/agents/delta": {
+      "get": {
+        "description": "Use this method to retrieve Agent records that were added/updated (Upserted) or deleted since a specific time. The response will indicate if a particular Agent has been deleted or Upserted and timestamp at which that action occurred. If the Agent was Upserted, the response will include all of the available details for it. Results will be paginated, depending on the \"page size\" you specify and the amount of changes that have occurred. Note that the method will not accept a \"since\" time older than a week. The recommended synchronization frequency is every 1 - 4 hours. If your synchronization process is \"broken\" for over a week, use the \"active\" method to re-synchronize before resuming the regular synchronization process",
+        "operationId": "getagentdelta",
+        "summary": "GetAgentDelta",
+        "tags": [
+          "Agents"
+        ],
+        "parameters": [
+          {
+            "name": "since",
+            "in": "query",
+            "description": "Format - date-time (as date-time in RFC3339). The time from which you need changes from. You should use the format emitted by Date's toJSON method (for example, 2017-04-23T18:25:43.511Z). If a timestamp older than a week is passed, a business rule violation will be thrown which will require the client to change the from date. As a best-practice, for a subsequent call to this method, send the timestamp when you <b>started</b> the previous delta call (instead of when you completed processing the response or the max of the lastUpdateOn timestamps of the returned records). This will ensure that you do not miss any changes that occurred while you are processing the response from this method",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "brandCode",
+            "in": "query",
+            "description": "The brand for which you need the delta for. If you specify a brand that you do not have access to, you will not get anything back in the response. Do not send this parameter if you need changes for any brand that you have access to",
+            "type": "string",
+            "enum": [
+              "C21",
+              "CB",
+              "ERA",
+              "SIR",
+              "BHG",
+              "CBC",
+              "ZIP"
+            ]
+          },
+          {
+            "name": "countryCode",
+            "in": "query",
+            "description": "The ISO code of the country that the Agent's office is located in",
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Format - int32. This is the maximum number of records that will be returned in one \"page\". A query may return fewer than the value of limit due to filtering. Do not depend on the number of results being fewer than the limit value to indicate your query reached the end of the list of data, use the absence of the \"cursor\" value instead (as described below). Default value is 100. Minimum is 10 and maximum is 1000. Recommended value is not more than 500.",
+            "type": "number",
+            "default": "100"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "This is a value generated by this method to keep track of the data to include in subsequent calls (to return additional pages of results). This value will be automatically set in the \"nextLink\" URL returned by the method, so do not attempt to generate and send it yourself. If you generate this parameter value explicitly, you will very likely get a 400 response",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/AgentDeltaResponse"
+            }
+          },
+          "400": {
+            "description": "Bad input parameter. Error message should indicate which one and why",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          }
+        },
+        "produces": [
+          "application/json"
+        ]
+      }
+    },
+    "/agents/active": {
+      "get": {
+        "description": "Returns the list of Agents who are presently Active. This method can be used to do a first-time initialization of your local data store OR to perform periodic reconciliation of your data store with us. To get details of the Agent, use the GetAgentById method described below. If using this method for the first-time initialization, make sure to call the delta method by passing the timestamp when you started the initialization as the \"since\" parameter value. This will ensure that you get notified of any changes that happen in the time that it took to initialize your local data store",
+        "operationId": "getactiveagents",
+        "summary": "GetActiveAgents",
+        "tags": [
+          "Agents"
+        ],
+        "parameters": [
+          {
+            "name": "brandCode",
+            "in": "query",
+            "description": "The brand for which you need the data for. If you specify a brand that you do not have access to, you will not get anything back in the response. Do not send this parameter if you need changes for any brand that you have access to",
+            "type": "string",
+            "enum": [
+              "C21",
+              "CB",
+              "ERA",
+              "SIR",
+              "BHG",
+              "CBC",
+              "ZIP"
+            ]
+          },
+          {
+            "name": "countryCode",
+            "in": "query",
+            "description": "The ISO code of the country that the Agent's office is located in",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/ActiveEntityResponse"
+            }
+          },
+          "400": {
+            "description": "Bad input parameter. Error message should indicate which one and why",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          }
+        },
+        "produces": [
+          "application/json"
+        ]
+      }
+    },
+    "/agents/{id}": {
+      "get": {
+        "description": "Use this method to retrieve details for a particular agent using the Realogy uniqueidentifier. The Realogy identifer is returned by the Delta or the Active methods. If you use IDs obtained from other sources, there is a possibility of getting 404 response",
+        "operationId": "getagentbyid",
+        "summary": "GetAgentById",
+        "tags": [
+          "Agents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The Realogy uniqueidentifier for the agent",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Agent"
+            }
+          },
+          "404": {
+            "description": "Not Found. Record is no longer active in the system"
+          },
+          "500": {
+            "description": "Server Error",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          }
+        },
+        "produces": [
+          "application/json"
+        ]
+      }
+    },
+    "/companies/delta": {
+      "get": {
+        "description": "Use this method to retrieve Company records that were added/updated (Upserted) or deleted since a specific time. The response will indicate if a particular Company has been deleted or Upserted and timestamp at which that action occurred. If the Company was Upserted, the response will include all of the available details for it. Results will be paginated, depending on the \"page size\" you specify and the amount of changes that have occurred. Note that the method will not accept a \"since\" time older than a week. The recommended synchronization frequency is every 1 - 4 hours. If your synchronization process is \"broken\" for over a week, use the \"active\" method to re-synchronize before resuming the regular synchronization process",
+        "operationId": "getcompanydelta",
+        "summary": "GetCompanyDelta",
+        "tags": [
+          "Companies"
+        ],
+        "parameters": [
+          {
+            "name": "since",
+            "in": "query",
+            "description": "Format - date-time (as date-time in RFC3339). The time from which you need changes from. You should use the format emitted by Date's toJSON method (for example, 2017-04-23T18:25:43.511Z). If a timestamp older than a week is passed, a business rule violation will be thrown which will require the client to change the from date. As a best-practice, for a subsequent call to this method, send the timestamp when you <b>started</b> the previous delta call (instead of when you completed processing the response or the max of the lastUpdateOn timestamps of the returned records). This will ensure that you do not miss any changes that occurred while you are processing the response from this method",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "brandCode",
+            "in": "query",
+            "description": "The brand for which you need the delta for. If you specify a brand that you do not have access to, you will not get anything back in the response. Do not send this parameter if you need changes for any brand that you have access to",
+            "type": "string",
+            "enum": [
+              "C21",
+              "CB",
+              "ERA",
+              "SIR",
+              "BHG",
+              "CBC",
+              "ZIP"
+            ]
+          },
+          {
+            "name": "countryCode",
+            "in": "query",
+            "description": "The ISO code of the country that the Company's office is located in",
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Format - int32. This is the maximum number of records that will be returned in one \"page\". A query may return fewer than the value of limit due to filtering. Do not depend on the number of results being fewer than the limit value to indicate your query reached the end of the list of data, use the absence of the \"cursor\" value instead (as described below). Default value is 100. Minimum is 10 and maximum is 1000. Recommended value is not more than 500.",
+            "type": "number",
+            "default": "100"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "This is a value generated by this method to keep track of the data to include in subsequent calls (to return additional pages of results). This value will be automatically set in the \"nextLink\" URL returned by the method, so do not attempt to generate and send it yourself. If you generate this parameter value explicitly, you will very likely get a 400 response",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/CompanyDeltaResponse"
+            }
+          },
+          "400": {
+            "description": "Bad input parameter. Error message should indicate which one and why",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          }
+        },
+        "produces": [
+          "application/json"
+        ]
+      }
+    },
+    "/companies/active": {
+      "get": {
+        "description": "Returns the list of Companies that are presently Active. This method can be used to do a first-time initialization of your local data store OR to perform periodic reconciliation of your data store with us. To get details of the Company, use the GetCompanyById method described below. If using this method for the first-time initialization, make sure to call the delta method by passing the timestamp when you started the initialization as the \"since\" parameter value. This will ensure that you get notified of any changes that happen in the time that it took to initialize your local data store",
+        "operationId": "getactivecompanies",
+        "summary": "GetActiveCompanies",
+        "tags": [
+          "Companies"
+        ],
+        "parameters": [
+          {
+            "name": "brandCode",
+            "in": "query",
+            "description": "The brand for which you need the data for. If you specify a brand that you do not have access to, you will not get anything back in the response. Do not send this parameter if you need changes for any brand that you have access to",
+            "type": "string",
+            "enum": [
+              "C21",
+              "CB",
+              "ERA",
+              "SIR",
+              "BHG",
+              "CBC",
+              "ZIP"
+            ]
+          },
+          {
+            "name": "countryCode",
+            "in": "query",
+            "description": "The ISO code of the country that the Company's office is located in",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/ActiveEntityResponse"
+            }
+          },
+          "400": {
+            "description": "Bad input parameter. Error message should indicate which one and why",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          }
+        },
+        "produces": [
+          "application/json"
+        ]
+      }
+    },
+    "/companies/{id}": {
+      "get": {
+        "description": "Use this method to retrieve details for a particular Company using the Realogy uniqueidentifier. The Realogy identifer is returned by the Delta or the Active methods. If you use IDs obtained from other sources, there is a possibility of getting 404 response",
+        "operationId": "getcompanybyid",
+        "summary": "GetCompanyById",
+        "tags": [
+          "Companies"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The Realogy uniqueidentifier for the Company",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Company"
+            }
+          },
+          "404": {
+            "description": "Not Found. Record is no longer active in the system"
+          },
+          "500": {
+            "description": "Server Error",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          }
+        },
+        "produces": [
+          "application/json"
+        ]
+      }
+    },
+    "/listings/delta": {
+      "get": {
+        "description": "Use this method to retrieve Listing records that were added/updated (Upserted) or deleted since a specific time. The response will indicate if a particular Listing has been deleted or Upserted and timestamp at which that action occurred. If the Listing was Upserted, the response will include all of the available details for it. Results will be paginated, depending on the \"page size\" you specify and the amount of changes that have occurred. Note that the method will not accept a \"since\" time older than a week. The recommended synchronization frequency is every 1 - 4 hours. If your synchronization process is \"broken\" for over a week, use the \"active\" method to re-synchronize before resuming the regular synchronization process",
+        "operationId": "getlistingdelta",
+        "summary": "GetListingDelta",
+        "tags": [
+          "Listings"
+        ],
+        "parameters": [
+          {
+            "name": "since",
+            "in": "query",
+            "description": "Format - date-time (as date-time in RFC3339). The time from which you need changes from. You should use the format emitted by Date's toJSON method (for example, 2017-04-23T18:25:43.511Z). If a timestamp older than a week is passed, a business rule violation will be thrown which will require the client to change the from date. As a best-practice, for a subsequent call to this method, send the timestamp when you <b>started</b> the previous delta call (instead of when you completed processing the response or the max of the lastUpdateOn timestamps of the returned records). This will ensure that you do not miss any changes that occurred while you are processing the response from this method",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "brandCode",
+            "in": "query",
+            "description": "The brand for which you need the delta for. If you specify a brand that you do not have access to, you will not get anything back in the response. Do not send this parameter if you need changes for any brand that you have access to",
+            "type": "string",
+            "enum": [
+              "C21",
+              "CB",
+              "ERA",
+              "SIR",
+              "BHG",
+              "CBC",
+              "ZIP"
+            ]
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Use to specify the type of Listings you are interested in. By default, all listing types will be included",
+            "type": "string",
+            "enum": [
+              "ForSale",
+              "ForRent",
+              "ForSaleCommercial",
+              "ForLeaseCommercial"
+            ]
+          },
+          {
+            "name": "countryCode",
+            "in": "query",
+            "description": "The ISO code of the country that the Property is located in",
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Format - int32. This is the maximum number of records that will be returned in one \"page\". A query may return fewer than the value of limit due to filtering. Do not depend on the number of results being fewer than the limit value to indicate your query reached the end of the list of data, use the absence of the \"cursor\" value instead (as described below). Default value is 100. Minimum is 10 and maximum is 1000. Recommended value is not more than 500.",
+            "type": "number",
+            "default": "100"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "This is a value generated by this method to keep track of the data to include in subsequent calls (to return additional pages of results). This value will be automatically set in the \"nextLink\" URL returned by the method, so do not attempt to generate and send it yourself. If you generate this parameter value explicitly, you will very likely get a 400 response",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/ListingDeltaResponse"
+            }
+          },
+          "400": {
+            "description": "Bad input parameter. Error message should indicate which one and why",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          }
+        },
+        "produces": [
+          "application/json"
+        ]
+      }
+    },
+    "/listings/active": {
+      "get": {
+        "description": "Returns the list of Listings that are presently Active. This method can be used to do a first-time initialization of your local data store OR to perform periodic reconciliation of your data store with us. To get details of the Listing, use the GetListingById method described below. If using this method for the first-time initialization, make sure to call the delta method by passing the timestamp when you started the initialization as the \"since\" parameter value. This will ensure that you get notified of any changes that happen in the time that it took to initialize your local data store",
+        "operationId": "getactivelistings",
+        "summary": "GetActiveListings",
+        "tags": [
+          "Listings"
+        ],
+        "parameters": [
+          {
+            "name": "brandCode",
+            "in": "query",
+            "description": "The brand for which you need the data for. If you specify a brand that you do not have access to, you will not get anything back in the response. Do not send this parameter if you need changes for any brand that you have access to",
+            "type": "string",
+            "enum": [
+              "C21",
+              "CB",
+              "ERA",
+              "SIR",
+              "BHG",
+              "CBC",
+              "ZIP"
+            ]
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Use to specify the type of Listings you are interested in. By default, all listing types will be included",
+            "type": "string",
+            "enum": [
+              "ForSale",
+              "ForRent",
+              "ForSaleCommercial",
+              "ForLeaseCommercial"
+            ]
+          },
+          {
+            "name": "countryCode",
+            "in": "query",
+            "description": "The ISO code of the country that the Property is located in",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/ActiveEntityResponse"
+            }
+          },
+          "400": {
+            "description": "Bad input parameter. Error message should indicate which one and why",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          }
+        },
+        "produces": [
+          "application/json"
+        ]
+      }
+    },
+    "/listings/{id}": {
+      "get": {
+        "description": "Use this method to retrieve details for a particular Listing using the Realogy uniqueidentifier. The Realogy identifer is returned by the Delta or the Active methods. If you use IDs obtained from other sources, there is a possibility of getting 404 response",
+        "operationId": "getlistingbyid",
+        "summary": "GetListingById",
+        "tags": [
+          "Listings"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The Realogy uniqueidentifier for the Listing",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Listing"
+            }
+          },
+          "404": {
+            "description": "Not Found. Record is no longer active in the system"
+          },
+          "500": {
+            "description": "Server Error",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          }
+        },
+        "produces": [
+          "application/json"
+        ]
+      }
+    },
+    "/offices/delta": {
+      "get": {
+        "description": "Use this method to retrieve Office records that were added/updated (Upserted) or deleted since a specific time. The response will indicate if a particular Office has been deleted or Upserted and timestamp at which that action occurred. If the Office was Upserted, the response will include all of the available details for it. Results will be paginated, depending on the \"page size\" you specify and the amount of changes that have occurred. Note that the method will not accept a \"since\" time older than a week. The recommended synchronization frequency is every 1 - 4 hours. If your synchronization process is \"broken\" for over a week, use the \"active\" method to re-synchronize before resuming the regular synchronization process",
+        "operationId": "getofficedelta",
+        "summary": "GetOfficeDelta",
+        "tags": [
+          "Offices"
+        ],
+        "parameters": [
+          {
+            "name": "since",
+            "in": "query",
+            "description": "Format - date-time (as date-time in RFC3339). The time from which you need changes from. You should use the format emitted by Date's toJSON method (for example, 2017-04-23T18:25:43.511Z). If a timestamp older than a week is passed, a business rule violation will be thrown which will require the client to change the from date. As a best-practice, for a subsequent call to this method, send the timestamp when you <b>started</b> the previous delta call (instead of when you completed processing the response or the max of the lastUpdateOn timestamps of the returned records). This will ensure that you do not miss any changes that occurred while you are processing the response from this method",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "brandCode",
+            "in": "query",
+            "description": "The brand for which you need the delta for. If you specify a brand that you do not have access to, you will not get anything back in the response. Do not send this parameter if you need changes for any brand that you have access to",
+            "type": "string",
+            "enum": [
+              "C21",
+              "CB",
+              "ERA",
+              "SIR",
+              "BHG",
+              "CBC",
+              "ZIP"
+            ]
+          },
+          {
+            "name": "countryCode",
+            "in": "query",
+            "description": "The ISO code of the country that the office is located in",
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Format - int32. This is the maximum number of records that will be returned in one \"page\". A query may return fewer than the value of limit due to filtering. Do not depend on the number of results being fewer than the limit value to indicate your query reached the end of the list of data, use the absence of the \"cursor\" value instead (as described below). Default value is 100. Minimum is 10 and maximum is 1000. Recommended value is not more than 500.",
+            "type": "number",
+            "default": "100"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "This is a value generated by this method to keep track of the data to include in subsequent calls (to return additional pages of results). This value will be automatically set in the \"nextLink\" URL returned by the method, so do not attempt to generate and send it yourself. If you generate this parameter value explicitly, you will very likely get a 400 response",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/OfficeDeltaResponse"
+            }
+          },
+          "400": {
+            "description": "Bad input parameter. Error message should indicate which one and why",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          }
+        },
+        "produces": [
+          "application/json"
+        ]
+      }
+    },
+    "/offices/active": {
+      "get": {
+        "description": "Returns the list of Offices that are presently Active. This method can be used to do a first-time initialization of your local data store OR to perform periodic reconciliation of your data store with us. To get details of the Office, use the GetOfficeById method described below. If using this method for the first-time initialization, make sure to call the delta method by passing the timestamp when you started the initialization as the \"since\" parameter value. This will ensure that you get notified of any changes that happen in the time that it took to initialize your local data store",
+        "operationId": "getactiveoffices",
+        "summary": "GetActiveOffices",
+        "tags": [
+          "Offices"
+        ],
+        "parameters": [
+          {
+            "name": "brandCode",
+            "in": "query",
+            "description": "The brand for which you need the data for. If you specify a brand that you do not have access to, you will not get anything back in the response. Do not send this parameter if you need changes for any brand that you have access to",
+            "type": "string",
+            "enum": [
+              "C21",
+              "CB",
+              "ERA",
+              "SIR",
+              "BHG",
+              "CBC",
+              "ZIP"
+            ]
+          },
+          {
+            "name": "countryCode",
+            "in": "query",
+            "description": "The ISO code of the country that the office is located in",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/ActiveEntityResponse"
+            }
+          },
+          "400": {
+            "description": "Bad input parameter. Error message should indicate which one and why",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          }
+        },
+        "produces": [
+          "application/json"
+        ]
+      }
+    },
+    "/offices/{id}": {
+      "get": {
+        "description": "Use this method to retrieve details for a particular Office using the Realogy uniqueidentifier. The Realogy identifer is returned by the Delta or the Active methods. If you use IDs obtained from other sources, there is a possibility of getting 404 response",
+        "operationId": "getofficebyid",
+        "summary": "GetOfficeById",
+        "tags": [
+          "Offices"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The Realogy uniqueidentifier for the Office",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Office"
+            }
+          },
+          "404": {
+            "description": "Not Found. Record is no longer active in the system"
+          },
+          "500": {
+            "description": "Server Error",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          }
+        },
+        "produces": [
+          "application/json"
+        ]
+      }
+    },
+    "/teams/delta": {
+      "get": {
+        "description": "Use this method to retrieve Team records that were added/updated (Upserted) or deleted since a specific time. The response will indicate if a particular Team has been deleted or Upserted and timestamp at which that action occurred. If the Team was Upserted, the response will include all of the available details for it. Results will be paginated, depending on the \"page size\" you specify and the amount of changes that have occurred. Note that the method will not accept a \"since\" time older than a week. The recommended synchronization frequency is every 1 - 4 hours. If your synchronization process is \"broken\" for over a week, use the \"active\" method to re-synchronize before resuming the regular synchronization process",
+        "operationId": "getteamdelta",
+        "summary": "GetTeamDelta",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [
+          {
+            "name": "since",
+            "in": "query",
+            "description": "Format - date-time (as date-time in RFC3339). The time from which you need changes from. You should use the format emitted by Date's toJSON method (for example, 2017-04-23T18:25:43.511Z). If a timestamp older than a week is passed, a business rule violation will be thrown which will require the client to change the from date. As a best-practice, for a subsequent call to this method, send the timestamp when you <b>started</b> the previous delta call (instead of when you completed processing the response or the max of the lastUpdateOn timestamps of the returned records). This will ensure that you do not miss any changes that occurred while you are processing the response from this method",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "brandCode",
+            "in": "query",
+            "description": "The brand for which you need the delta for. If you specify a brand that you do not have access to, you will not get anything back in the response. Do not send this parameter if you need changes for any brand that you have access to",
+            "type": "string",
+            "enum": [
+              "C21",
+              "CB",
+              "ERA",
+              "SIR",
+              "BHG",
+              "CBC",
+              "ZIP"
+            ]
+          },
+          {
+            "name": "countryCode",
+            "in": "query",
+            "description": "The ISO code of the country that the Team's office is located in",
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Format - int32. This is the maximum number of records that will be returned in one \"page\". A query may return fewer than the value of limit due to filtering. Do not depend on the number of results being fewer than the limit value to indicate your query reached the end of the list of data, use the absence of the \"cursor\" value instead (as described below). Default value is 100. Minimum is 10 and maximum is 1000. Recommended value is not more than 500.",
+            "type": "number",
+            "default": "100"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "This is a value generated by this method to keep track of the data to include in subsequent calls (to return additional pages of results). This value will be automatically set in the \"nextLink\" URL returned by the method, so do not attempt to generate and send it yourself. If you generate this parameter value explicitly, you will very likely get a 400 response",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/TeamDeltaResponse"
+            }
+          },
+          "400": {
+            "description": "Bad input parameter. Error message should indicate which one and why",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          }
+        },
+        "produces": [
+          "application/json"
+        ]
+      }
+    },
+    "/teams/active": {
+      "get": {
+        "description": "Returns the list of Teams that are presently Active. This method can be used to do a first-time initialization of your local data store OR to perform periodic reconciliation of your data store with us. To get details of the Team, use the GetTeamById method described below. If using this method for the first-time initialization, make sure to call the delta method by passing the timestamp when you started the initialization as the \"since\" parameter value. This will ensure that you get notified of any changes that happen in the time that it took to initialize your local data store",
+        "operationId": "getactiveteams",
+        "summary": "GetActiveTeams",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [
+          {
+            "name": "brandCode",
+            "in": "query",
+            "description": "The brand for which you need the data for. If you specify a brand that you do not have access to, you will not get anything back in the response. Do not send this parameter if you need changes for any brand that you have access to",
+            "type": "string",
+            "enum": [
+              "C21",
+              "CB",
+              "ERA",
+              "SIR",
+              "BHG",
+              "CBC",
+              "ZIP"
+            ]
+          },
+          {
+            "name": "countryCode",
+            "in": "query",
+            "description": "The ISO code of the country that the Team's office is located in",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/ActiveEntityResponse"
+            }
+          },
+          "400": {
+            "description": "Bad input parameter. Error message should indicate which one and why",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          },
+          "500": {
+            "description": "Server Error",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          }
+        },
+        "produces": [
+          "application/json"
+        ]
+      }
+    },
+    "/teams/{id}": {
+      "get": {
+        "description": "Use this method to retrieve details for a particular Team using the Realogy uniqueidentifier. The Realogy identifer is returned by the Delta or the Active methods. If you use IDs obtained from other sources, there is a possibility of getting 404 response",
+        "operationId": "getteambyid",
+        "summary": "GetTeamById",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Team"
+            }
+          },
+          "404": {
+            "description": "Not Found. Record is no longer active in the system"
+          },
+          "500": {
+            "description": "Server Error",
+            "schema": {
+              "$ref": "#/definitions/GeneralError"
+            }
+          }
+        },
+        "produces": [
+          "application/json"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "AgentDeltaResponse": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "items": {
+            "$ref": "#/definitions/AgentDeltaResponseItem"
+          },
+          "type": "array"
+        },
+        "nextLink": {
+          "type": "string"
+        }
+      }
+    },
+    "AgentDeltaResponseItem": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastUpdateOn": {
+          "type": "string"
+        },
+        "entityDetail": {
+          "$ref": "#/definitions/Agent"
+        }
+      }
+    },
+    "ListingDeltaResponse": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "items": {
+            "$ref": "#/definitions/ListingDeltaResponseItem"
+          },
+          "type": "array"
+        },
+        "nextLink": {
+          "type": "string"
+        }
+      }
+    },
+    "ListingDeltaResponseItem": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastUpdateOn": {
+          "type": "string"
+        },
+        "entityDetail": {
+          "$ref": "#/definitions/Listing"
+        }
+      }
+    },
+    "OfficeDeltaResponse": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "items": {
+            "$ref": "#/definitions/OfficeDeltaResponseItem"
+          },
+          "type": "array"
+        },
+        "nextLink": {
+          "type": "string"
+        }
+      }
+    },
+    "OfficeDeltaResponseItem": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastUpdateOn": {
+          "type": "string"
+        },
+        "entityDetail": {
+          "$ref": "#/definitions/Office"
+        }
+      }
+    },
+    "TeamDeltaResponse": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "items": {
+            "$ref": "#/definitions/TeamDeltaResponseItem"
+          },
+          "type": "array"
+        },
+        "nextLink": {
+          "type": "string"
+        }
+      }
+    },
+    "TeamDeltaResponseItem": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastUpdateOn": {
+          "type": "string"
+        },
+        "entityDetail": {
+          "$ref": "#/definitions/Team"
+        }
+      }
+    },
+    "CompanyDeltaResponse": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "items": {
+            "$ref": "#/definitions/CompanyDeltaResponseItem"
+          },
+          "type": "array"
+        },
+        "nextLink": {
+          "type": "string"
+        }
+      }
+    },
+    "CompanyDeltaResponseItem": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastUpdateOn": {
+          "type": "string"
+        },
+        "entityDetail": {
+          "$ref": "#/definitions/Company"
+        }
+      }
+    },
+    "ActiveEntityResponse": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ActiveEntityItem"
+      }
+    },
+    "ActiveEntityItem": {
+      "type": "object",
+      "properties": {
+        "entityId": {
+          "type": "string"
+        },
+        "lastUpdateOn": {
+          "type": "string"
+        }
+      }
+    },
+    "CompanySummary": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Globally unique identifier assigned to a Company by Realogy"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the Company"
+        },
+        "RFGID": {
+          "type": "string",
+          "description": "Business identifier assigned to a Company by Realogy"
+        },
+        "brandCode": {
+          "type": "string",
+          "description": "The brand that the Company is associated with"
+        },
+        "isNrt": {
+          "type": "boolean",
+          "description": "This indicates whether it is Nrt Type or not"
+        },
+        "websiteURL": {
+          "type": "string",
+          "description": "URL to the Company's website"
+        },
+        "lastUpdateOn": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date/time that the Company record was last updated in the system (UTC)"
+        },
+        "canDoCommercialBusiness": {
+          "type": "boolean",
+          "description": "Will be 'true' if this company can do commercial business"
+        },
+        "commercialCompanyName": {
+          "type": "string",
+          "description": "commercialCompanyName of the company"
+        }
+      }
+    },
+    "Company": {
+      "type": "object",
+      "properties": {
+        "companySummary": {
+          "$ref": "#/definitions/CompanySummary"
+        },
+        "media": {
+          "$ref": "#/definitions/MediaArray"
+        },
+        "addlWebSites": {
+          "type": "array",
+          "description": "A collection of websites associated with the Company",
+          "items": {
+            "$ref": "#/definitions/Website"
+          }
+        },
+        "addlLanguageNames": {
+          "type": "array",
+          "description": "A collection of Company names in other languages (non-English)",
+          "items": {
+            "$ref": "#/definitions/OfficeName"
+          }
+        }
+      }
+    },
+    "Listing": {
+      "type": "object",
+      "required": [
+        "listingSummary"
+      ],
+      "properties": {
+        "listingSummary": {
+          "$ref": "#/definitions/ListingSummary"
+        },
+        "fullBath": {
+          "type": "number",
+          "format": "int32",
+          "description": "Number of full baths in the property"
+        },
+        "halfBath": {
+          "type": "number",
+          "format": "int32",
+          "description": "Number of half baths in the property"
+        },
+        "quarterBath": {
+          "type": "number",
+          "format": "int32",
+          "description": "Number of quarter baths in the property"
+        },
+        "threeQuarterBath": {
+          "type": "number",
+          "format": "int32",
+          "description": "Number of three quarter baths in the property"
+        },
+        "partialBath": {
+          "type": "number",
+          "format": "int32",
+          "description": "Number of partial baths in the property"
+        },
+        "parkingPlaces": {
+          "type": "number",
+          "format": "int32",
+          "description": "Number of parking places in the property"
+        },
+        "lotDimension": {
+          "type": "string",
+          "description": "The dimensions of the Lot that the property is located in"
+        },
+        "levels": {
+          "type": "number",
+          "format": "int32",
+          "description": "The number of levels (or storeys) in the Property"
+        },
+        "yearBuilt": {
+          "type": "string",
+          "description": "The year in which the property was built"
+        },
+        "yearRenovated": {
+          "type": "string",
+          "description": "The year in which the property was last renovated"
+        },
+        "totalRooms": {
+          "type": "number",
+          "format": "int32",
+          "description": "Number of total rooms in the property"
+        },
+        "taxRollNumber": {
+          "type": "string",
+          "description": "An identifier for a property within a given jurisdiction, such as a city or county, that can be taxed"
+        },
+        "zoning": {
+          "type": "string",
+          "description": "Property in terms of permitted usage of land based on mapped zones by the authorities"
+        },
+        "providerName": {
+          "type": "string",
+          "description": "The name of the provider of the listing information"
+        },
+        "providerCategory": {
+          "type": "string",
+          "description": "The category of the provider of the listing information"
+        },
+        "providerURL": {
+          "type": "string",
+          "description": "The URL of the provider of the listing information"
+        },
+        "providerKey": {
+          "type": "string",
+          "description": "The unique identifier for the listing in the provider's system"
+        },
+        "leadEmail": {
+          "type": "string",
+          "description": "The email address that leads for this Listing should be sent to"
+        },
+        "agriculturalPropertyNumber": {
+          "type": "string",
+          "description": "A unique identifier given for the agriculture property"
+        },
+        "anchorStores": {
+          "type": "string",
+          "description": "The stores within the shopping complex that draw traffic to the location"
+        },
+        "annualTax": {
+          "type": "number",
+          "format": "decimal",
+          "description": "The annualTax associated with the listing"
+        },
+        "availableFloors": {
+          "type": "number",
+          "format": "int32",
+          "description": "The total number of floors available within a property’s Listing"
+        },
+        "availableSpace": {
+          "type": "number",
+          "format": "decimal",
+          "description": "The space available in the commercial property"
+        },
+        "averageFloorSize": {
+          "type": "number",
+          "format": "decimal",
+          "description": "The size of the floor in an average. A calculation of the total building area divided by the number of stories or levels within the building"
+        },
+        "averageOccupancyRate": {
+          "type": "number",
+          "format": "decimal",
+          "description": "The number of units in a building that have been rented out as compared to the total number of units in the building"
+        },
+        "bayDepth": {
+          "type": "string",
+          "description": "The distance from the front to the back of the bay"
+        },
+        "buildingClass": {
+          "type": "string",
+          "description": "The Subjective quality rating of buildings which indicates the competitive ability of each building to attract similar types of tenants"
+        },
+        "capRatePercent": {
+          "type": "number",
+          "format": "decimal",
+          "description": "The capitalization rate on the property in percentage"
+        },
+        "cashFlow": {
+          "type": "number",
+          "format": "decimal",
+          "description": "The amount of cash flow the property brings in if its on sale"
+        },
+        "ceilingHeight": {
+          "type": "string",
+          "description": "The distance from the floor to the lowest hanging ceiling member or hanging objects of the industrial work area"
+        },
+        "clearance": {
+          "type": "string",
+          "description": "The distance from the floor to the lowest hanging ceiling member or hanging objects, beams, joists or truss work descending down into a substantial portion of the industrial work area"
+        },
+        "columnSpacing": {
+          "type": "string",
+          "description": "The distance between posts or vertical supporting beams in an industrial building"
+        },
+        "commonAreaFactor": {
+          "type": "number",
+          "format": "decimal",
+          "description": "The shared spaces on a single floor, and within a building in its entirety"
+        },
+        "dockHeight": {
+          "type": "string",
+          "description": "The amount of distance the height of the slab at the bottom of an overhead door is from the ground level"
+        },
+        "downPayment": {
+          "type": "number",
+          "format": "decimal",
+          "description": "The down payment required by the current owner for a commercial listing"
+        },
+        "fullyLeasedIncome": {
+          "type": "number",
+          "format": "decimal",
+          "description": "The gross income that the owner currently receives if the property is fully leased"
+        },
+        "grossIncome": {
+          "type": "number",
+          "format": "decimal",
+          "description": "The gross income that the owner currently receives if the property is fully leased"
+        },
+        "hasRailAccess": {
+          "type": "boolean",
+          "description": "Indicates whether the property has the industrial rail access to it"
+        },
+        "isAllowMapping": {
+          "type": "boolean",
+          "description": "Indicates whether or not the property address should be displayed on a map"
+        },
+        "isCrossDocks": {
+          "type": "boolean",
+          "description": "Indicates whether the property has the CrossDocks associated with it"
+        },
+        "isGroundLevel": {
+          "type": "boolean",
+          "description": "The Industrial ground level of the property"
+        },
+        "isSprinkler": {
+          "type": "boolean",
+          "description": "Indicates whether property has the industrial sprinkler to it"
+        },
+        "isSubLease": {
+          "type": "boolean",
+          "description": "The value indicating whether the listing is a sublease"
+        },
+        "leaseTerm": {
+          "type": "string",
+          "description": "Indicates the Measurement. List price or Lease rate or rental value at which the sub unit is available"
+        },
+        "leaseType": {
+          "type": "string",
+          "description": "The type of lease for a listing"
+        },
+        "loanPayment": {
+          "type": "number",
+          "format": "decimal",
+          "description": "The current loan payment value on the property being paid by the owner"
+        },
+        "maxContiguousArea": {
+          "type": "number",
+          "format": "decimal",
+          "description": "The largest amount of open space available in a commercial building"
+        },
+        "maximumLeaseRate": {
+          "type": "number",
+          "format": "decimal",
+          "description": "The Maximum Lease Rate associated with the listing"
+        },
+        "minDivisibleArea": {
+          "type": "number",
+          "format": "decimal",
+          "description": "The minimum space which can be leased"
+        },
+        "minimumLeaseRate": {
+          "type": "number",
+          "format": "decimal",
+          "description": "The Minimum Lease Rate associated with the listing"
+        },
+        "netOperatingIncome": {
+          "type": "number",
+          "format": "decimal",
+          "description": "The potential rental income plus other income, less vacancy, credit losses, and operating expenses"
+        },
+        "numberOfDocks": {
+          "type": "number",
+          "format": "int32",
+          "description": "The Number of Docks associated with the property"
+        },
+        "numberOfBallrooms": {
+          "type": "number",
+          "format": "int32",
+          "description": "The number of ballrooms in a property"
+        },
+        "numberOfConferenceRooms": {
+          "type": "number",
+          "format": "int32",
+          "description": "The number of conference rooms in a property"
+        },
+        "occupancyRate": {
+          "type": "number",
+          "format": "int32",
+          "description": "The number of units in a building that have been rented out as compared to the total number of units in the building"
+        },
+        "parkingRatio": {
+          "type": "number",
+          "format": "decimal",
+          "description": "The ratio of available standard parking spaces to the gross leasable area of a property"
+        },
+        "power": {
+          "type": "string",
+          "description": "The type and voltage of power applicable for the property"
+        },
+        "pricePerArea": {
+          "type": "number",
+          "format": "decimal",
+          "description": "The price per area of the property, this is generally the list price divided by the area"
+        },
+        "scheduleIncome": {
+          "type": "number",
+          "format": "decimal",
+          "description": "The gross income that would be collected from a rental property with all units 100% occupied and rented"
+        },
+        "suiteApartmentName": {
+          "type": "string",
+          "description": "The Suite Apartment Name associated with the listing"
+        },
+        "taxIdNumber": {
+          "type": "string",
+          "description": "The Tax Id Number associated with the listing"
+        },
+        "taxYear": {
+          "type": "number",
+          "format": "int32",
+          "description": "The year in which tax was calculated"
+        },
+        "totalExpenses": {
+          "type": "number",
+          "format": "decimal",
+          "description": "The Total Expenses associated with the listing"
+        },
+        "totalUnits": {
+          "type": "number",
+          "format": "int32",
+          "description": "The Total Units associated with the listing"
+        },
+        "turningRadius": {
+          "type": "string",
+          "description": "The available turning radius available in the industrial property. Turning radius is the size of smallest possible circular turn a vehicle is able to take"
+        },
+        "linkedOffice": {
+          "type": "object",
+          "description": "The Realogy office associated with the Non Realogy Listing. This field will be present only in case the caller is allowed to view the linked office",
+          "$ref": "#/definitions/OfficeSummary"
+        },
+        "propertyFeatures": {
+          "type": "array",
+          "description": "Collection of features for the property",
+          "items": {
+            "$ref": "#/definitions/PropertyFeature"
+          }
+        },
+        "openHouse": {
+          "type": "array",
+          "description": "Collection of OpenHouses for the property",
+          "items": {
+            "$ref": "#/definitions/OpenHouse"
+          }
+        },
+        "remarks": {
+          "type": "array",
+          "description": "Collection of remarks for the property",
+          "items": {
+            "$ref": "#/definitions/Remark"
+          }
+        },
+        "propertyFees": {
+          "type": "array",
+          "description": "Collection of property fees",
+          "items": {
+            "$ref": "#/definitions/PropertyFee"
+          }
+        },
+        "webSites": {
+          "type": "array",
+          "description": "Collection of websites for the property",
+          "items": {
+            "$ref": "#/definitions/Website"
+          }
+        },
+        "media": {
+          "$ref": "#/definitions/MediaArray"
+        },
+        "schools": {
+          "type": "array",
+          "description": "Collection of schools for the property",
+          "items": {
+            "$ref": "#/definitions/School"
+          }
+        },
+        "multiUnits": {
+          "type": "array",
+          "description": "Collection of unit details of each unit for the property",
+          "items": {
+            "$ref": "#/definitions/MultiUnit"
+          }
+        },
+        "propertyRooms": {
+          "type": "array",
+          "description": "Collection of propertyRooms for the property",
+          "items": {
+            "$ref": "#/definitions/Room"
+          }
+        },
+        "floors": {
+          "type": "array",
+          "description": "Collection of floors for the property",
+          "items": {
+            "$ref": "#/definitions/Floor"
+          }
+        },
+        "suites": {
+          "type": "array",
+          "description": "Collection of sub units/suites for the property",
+          "items": {
+            "$ref": "#/definitions/SubUnit"
+          }
+        },
+        "mlsInformation": {
+          "type": "array",
+          "description": "Collection of MLS information for the property",
+          "items": {
+            "$ref": "#/definitions/MLSNumber"
+          }
+        },
+        "taxInformation": {
+          "type": "array",
+          "description": "Tax information associated with the Property",
+          "items": {
+            "$ref": "#/definitions/Tax"
+          }
+        }
+      }
+    },
+    "ListingSummary": {
+      "type": "object",
+      "required": [
+        "listingId"
+      ],
+      "properties": {
+        "listingId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Globally unique identifier assigned to a listing by Realogy"
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Will be 'true' if this is an Active listing"
+        },
+        "isPending": {
+          "type": "boolean",
+          "description": "Will be 'true' if this is presently Under Contract (Pending)"
+        },
+        "listingType": {
+          "type": "string",
+          "description": "The type of Listings you are interested in. It can be ForSale, ForRent, ForSaleCommercial and ForLeaseCommercial."
+        },
+        "listedOn": {
+          "type": "string",
+          "format": "date",
+          "description": "The date when the Listing became active"
+        },
+        "photoCount": {
+          "type": "number",
+          "format": "int32",
+          "description": "Number of photos associated with listing"
+        },
+        "videoCount": {
+          "type": "number",
+          "format": "int32",
+          "description": "Number of videos associated with listing"
+        },
+        "listPrice": {
+          "$ref": "#/definitions/Price"
+        },
+        "propertyAddress": {
+          "$ref": "#/definitions/Address"
+        },
+        "geographicRegions": {
+          "type": "array",
+          "description": "A collection of geographic regions associated with the location of the property",
+          "items": {
+            "$ref": "#/definitions/GeographicRegion"
+          }
+        },
+        "mlsNumbers": {
+          "type": "array",
+          "description": "A collection of MLS numbers associated with the Listing",
+          "items": {
+            "type": "string"
+          }
+        },
+        "RFGListingId": {
+          "type": "string",
+          "description": "A short unique identifier assigned to the Listing by Realogy"
+        },
+        "isNewConstruction": {
+          "type": "boolean",
+          "description": "Will be 'true' if the Property is a new construction"
+        },
+        "listingURL": {
+          "type": "string",
+          "description": "Public URL where the listing can be accessed"
+        },
+        "development": {
+          "type": "string",
+          "description": "The name of the Development that the property is located in"
+        },
+        "rentalFrequency": {
+          "type": "string",
+          "description": "The frequency at which the Rental amount is to be paid"
+        },
+        "isCallToShow": {
+          "type": "boolean",
+          "description": "Will be 'true' if a prospective buyer or agent has to contact the Seller to schedule an appoinment to view the Property"
+        },
+        "isForAuction": {
+          "type": "boolean",
+          "description": "Will be 'true' if this property is being sold by Auction"
+        },
+        "isHideListPrice": {
+          "type": "boolean",
+          "description": "Will be 'true' if the list price is not supposed to be shown on consumer site"
+        },
+        "isByAppointmentOnly": {
+          "type": "boolean",
+          "description": "Will be 'true' if a prospective buyer or agent has to contact the Seller to schedule an appoinment to view the Property"
+        },
+        "propertyCategory": {
+          "type": "string",
+          "description": "Category of property"
+        },
+        "propertyType": {
+          "type": "string",
+          "description": "Property Type"
+        },
+        "propertyStyle": {
+          "type": "string",
+          "description": "Property Style"
+        },
+        "propertyUse": {
+          "type": "string",
+          "description": "Property Use information of the property"
+        },
+        "propertyName": {
+          "type": "string",
+          "description": "Name of Property"
+        },
+        "totalBath": {
+          "type": "number",
+          "format": "int32",
+          "description": "Number of partial baths in the property"
+        },
+        "lotSize": {
+          "type": "string",
+          "description": "Lot size of the property"
+        },
+        "noOfBedrooms": {
+          "type": "number",
+          "format": "int32",
+          "description": "Number of bedrooms in the property"
+        },
+        "totalAcres": {
+          "type": "string",
+          "description": "Total Acres of the property"
+        },
+        "squareFootage": {
+          "type": "number",
+          "format": "double",
+          "description": "Square Footage of the property"
+        },
+        "defaultPhotoURL": {
+          "type": "string",
+          "description": "URL to the default photo for the property"
+        },
+        "isForeClosure": {
+          "type": "boolean",
+          "description": "Indicates if the property is for foreclosure"
+        },
+        "isShortSale": {
+          "type": "boolean",
+          "description": "Indicates if the property is for short sale"
+        },
+        "lastUpdateOn": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the listing was last updated at Realogy system"
+        },
+        "lastSoldOn": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp on which the property is previously sold"
+        },
+        "agents": {
+          "type": "array",
+          "description": "The agent(s) associated with the Listing",
+          "items": {
+            "$ref": "#/definitions/ListingAgent"
+          }
+        },
+        "team": {
+          "type": "object",
+          "description": "The team associated with the Listing",
+          "$ref": "#/definitions/TeamSummary"
+        },
+        "isShowAddressOnInternet": {
+          "type": "boolean",
+          "description": "Will be 'true' if  the property address shall be displayed on Internet"
+        },
+        "buildingArea": {
+          "type": "string",
+          "description": "BuildingArea  of the property"
+        }
+      }
+    },
+    "Office": {
+      "type": "object",
+      "required": [
+        "officeSummary"
+      ],
+      "properties": {
+        "officeSummary": {
+          "$ref": "#/definitions/OfficeSummary"
+        },
+        "leadEmailAddress": {
+          "type": "string",
+          "description": "Email address to send any leads generated for the Office"
+        },
+        "websiteURL": {
+          "type": "string",
+          "description": "URL to the Office's website"
+        },
+        "defaultPhotoURL": {
+          "type": "string",
+          "description": "URL for the default photo associated with the Office"
+        },
+        "brokerName": {
+          "type": "string",
+          "description": "Name of the Broker of the Office"
+        },
+        "officeManagerName": {
+          "type": "string",
+          "description": "Name of the Office Manager"
+        },
+        "addlPhoneNumbers": {
+          "type": "array",
+          "description": "Array of additional phone numbers associated with the office",
+          "items": {
+            "$ref": "#/definitions/PhoneNumber"
+          }
+        },
+        "entityPreference": {
+          "type": "array",
+          "description": "Array of  entityPreference associated with the office",
+          "items": {
+            "$ref": "#/definitions/Preference"
+          }
+        },
+        "RFGCompanyId": {
+          "type": "string",
+          "description": "Unique identifier assigned to a company by Realogy"
+        },
+        "RFGOfficeId": {
+          "type": "string",
+          "description": "Unique identifier assigned to an office by Realogy"
+        },
+        "seasonalOpenMMDD": {
+          "type": "string",
+          "description": "If a Seasonal Office, the month/day on which the Office opens in a year"
+        },
+        "seasonalCloseMMDD": {
+          "type": "string",
+          "description": "If a Seasonal Office, the month/day on which the Office closes in a year"
+        },
+        "recruitingEmailAddress": {
+          "type": "string",
+          "description": "Email address to send any recruiting-related communications for the Office"
+        },
+        "lastUpdateOn": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date/time that the Office record was last updated in the system (UTC)"
+        },
+        "areaServed": {
+          "type": "array",
+          "description": "Collection of areas served by the office",
+          "items": {
+            "$ref": "#/definitions/AreaServed"
+          }
+        },
+        "addlLanguageNames": {
+          "type": "array",
+          "description": "A collection of office names in other languages (non-English)",
+          "items": {
+            "$ref": "#/definitions/OfficeName"
+          }
+        },
+        "serviceRegion": {
+          "type": "string",
+          "description": "Service Region associated with the Office."
+        },
+        "remarks": {
+          "type": "array",
+          "description": "Collection of remarks for the Office",
+          "items": {
+            "$ref": "#/definitions/Remark"
+          }
+        },
+        "specialMarkets": {
+          "type": "array",
+          "description": "A list of Markets that the Office specializes in",
+          "items": {
+            "type": "string"
+          }
+        },
+        "media": {
+          "$ref": "#/definitions/MediaArray"
+        },
+        "addlWebSites": {
+          "type": "array",
+          "description": "A collection of websites associated with the Office",
+          "items": {
+            "$ref": "#/definitions/Website"
+          }
+        },
+        "languagesSpoken": {
+          "type": "array",
+          "description": "A collection of languages spoken by Agents that work out of the office",
+          "items": {
+            "$ref": "#/definitions/Language"
+          }
+        },
+        "geographicRegions": {
+          "type": "array",
+          "description": "A collection of geographic regions associated with the Office location",
+          "items": {
+            "$ref": "#/definitions/GeographicRegion"
+          }
+        },
+        "mlsInformation": {
+          "type": "array",
+          "description": "A collection of MLS numbers associated with an Office",
+          "items": {
+            "$ref": "#/definitions/MLSNumber"
+          }
+        }
+      }
+    },
+    "OfficeSummary": {
+      "type": "object",
+      "required": [
+        "officeId"
+      ],
+      "properties": {
+        "officeId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Globally unique identifier assigned to an office by Realogy"
+        },
+        "companyId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Globally unique identifier assigned to a company by Realogy"
+        },
+        "companyName": {
+          "type": "string",
+          "description": "Name of the Company"
+        },
+        "brandCode": {
+          "type": "string",
+          "description": "The Franchise that the Office is part of"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the office"
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of office (Main, Branch, etc.)"
+        },
+        "officeAddress": {
+          "$ref": "#/definitions/Address"
+        },
+        "serviceRegion": {
+          "type": "string",
+          "description": "Service Region associated with the office."
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "Main contact phone number for the office"
+        },
+        "faxNumber": {
+          "type": "string",
+          "description": "Fax number for the office"
+        },
+        "emailAddress": {
+          "type": "string",
+          "description": "Main contact email address for the office"
+        }
+      }
+    },
+    "AgentSummary": {
+      "type": "object",
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Globally unique identifier assigned to an Agent by Realogy"
+        },
+        "isAgent": {
+          "type": "boolean",
+          "description": "Indicates whether the person is an agent or not"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display Name of the agent"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the agent"
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the agent"
+        },
+        "middleName": {
+          "type": "string",
+          "description": "Middle name of the agent"
+        },
+        "gender": {
+          "type": "string",
+          "description": "Gender of the agent (male/female)"
+        },
+        "defaultPhotoURL": {
+          "type": "string",
+          "description": "Profile photo URL for the Agent"
+        },
+        "emailAddress": {
+          "type": "string",
+          "description": "Email address of the agent"
+        },
+        "leadEmailAddress": {
+          "type": "string",
+          "description": "Email address to send leads to the agent"
+        },
+        "businessPhone": {
+          "type": "string",
+          "description": "Business phone number of agent"
+        },
+        "businessPhoneExt": {
+          "type": "string",
+          "description": "Business phone extension of agent"
+        },
+        "mobilePhone": {
+          "type": "string",
+          "description": "Mobile phone number of agent"
+        },
+        "displayTitle": {
+          "type": "string",
+          "description": "Title  of the  agent"
+        },
+        "specialty": {
+          "type": "string",
+          "description": "Specialty  of the  agent"
+        },
+        "specialPrograms": {
+          "type": "array",
+          "description": "Special programs asssociated with the agent",
+          "items": {
+            "type": "string"
+          }
+        },
+        "office": {
+          "$ref": "#/definitions/OfficeSummary"
+        },
+        "RFGStaffId": {
+          "type": "string",
+          "description": "A short unique identifier assigned to the CompanyStaff by Realogy"
+        }
+      }
+    },
+    "TeamMember": {
+      "type": "object",
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Globally unique identifier assigned to an Agent by Realogy"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display Name of the agent"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the agent"
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the agent"
+        },
+        "middleName": {
+          "type": "string",
+          "description": "Middle name of the agent"
+        },
+        "gender": {
+          "type": "string",
+          "description": "Gender of the agent (male/female)"
+        },
+        "defaultPhotoURL": {
+          "type": "string",
+          "description": "Profile photo URL for the Agent"
+        },
+        "emailAddress": {
+          "type": "string",
+          "description": "Email address of the agent"
+        },
+        "leadEmailAddress": {
+          "type": "string",
+          "description": "Email address to send leads to the agent"
+        },
+        "businessPhone": {
+          "type": "string",
+          "description": "Business phone number of agent"
+        },
+        "businessPhoneExt": {
+          "type": "string",
+          "description": "Business phone extension of agent"
+        },
+        "mobilePhone": {
+          "type": "string",
+          "description": "Mobile phone number of agent"
+        },
+        "displayTitle": {
+          "type": "string",
+          "description": "Title  of the  agent"
+        },
+        "specialty": {
+          "type": "string",
+          "description": "Specialty  of the  agent"
+        },
+        "isRepresentative": {
+          "type": "boolean",
+          "description": "Indicates whether the person is a Representative or not."
+        },
+        "office": {
+          "$ref": "#/definitions/OfficeSummary"
+        },
+        "RFGStaffId": {
+          "type": "string",
+          "description": "A short unique identifier assigned to the CompanyStaff by Realogy"
+        }
+      }
+    },
+    "ListingAgent": {
+      "type": "object",
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Globally unique identifier assigned to an Agent by Realogy"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display Name of the agent"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the agent"
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the agent"
+        },
+        "middleName": {
+          "type": "string",
+          "description": "Middle name of the agent"
+        },
+        "gender": {
+          "type": "string",
+          "description": "Gender of the agent (male/female)"
+        },
+        "defaultPhotoURL": {
+          "type": "string",
+          "description": "Profile photo URL for the Agent"
+        },
+        "emailAddress": {
+          "type": "string",
+          "description": "Email address of the agent"
+        },
+        "leadEmailAddress": {
+          "type": "string",
+          "description": "Email address to send leads to the agent"
+        },
+        "businessPhone": {
+          "type": "string",
+          "description": "Business phone number of agent"
+        },
+        "businessPhoneExt": {
+          "type": "string",
+          "description": "Business phone extension of agent"
+        },
+        "mobilePhone": {
+          "type": "string",
+          "description": "Mobile phone number of agent"
+        },
+        "isPrimary": {
+          "type": "boolean",
+          "description": "Indicates whether the agent is primary agent or not"
+        },
+        "office": {
+          "$ref": "#/definitions/OfficeSummary"
+        },
+        "RFGStaffId": {
+          "type": "string",
+          "description": "A short unique identifier assigned to the CompanyStaff by Realogy"
+        }
+      }
+    },
+    "Agent": {
+      "type": "object",
+      "required": [
+        "agentSummary"
+      ],
+      "properties": {
+        "agentSummary": {
+          "$ref": "#/definitions/AgentSummary"
+        },
+        "personId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier assigned to a Person. This field is not to be used as this will be deprecated soon."
+        },
+        "lastUpdateOn": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date/time that the Agent record was last updated in the system (UTC)"
+        },
+        "areasOfSpecialization": {
+          "type": "array",
+          "description": "Area of specialization for the agent",
+          "items": {
+            "type": "string"
+          }
+        },
+        "designations": {
+          "type": "array",
+          "description": "Designation of the agent",
+          "items": {
+            "type": "string"
+          }
+        },
+        "specialPrograms": {
+          "type": "array",
+          "description": "The special program associated with the agent.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "roles": {
+          "type": "array",
+          "description": "Role details of the agent",
+          "items": {
+            "$ref": "#/definitions/Role"
+          }
+        },
+        "addlEmails": {
+          "type": "array",
+          "description": "Additional emails of agent",
+          "items": {
+            "$ref": "#/definitions/Email"
+          }
+        },
+        "addlLanguageNames": {
+          "type": "array",
+          "description": "Additional languages of agent",
+          "items": {
+            "$ref": "#/definitions/PersonName"
+          }
+        },
+        "languagesSpoken": {
+          "type": "array",
+          "description": "The languages agent speaks",
+          "items": {
+            "$ref": "#/definitions/Language"
+          }
+        },
+        "media": {
+          "$ref": "#/definitions/MediaArray"
+        },
+        "addlPhones": {
+          "type": "array",
+          "description": "Additional phone numbers for agent",
+          "items": {
+            "$ref": "#/definitions/PhoneNumber"
+          }
+        },
+        "remarks": {
+          "type": "array",
+          "description": "A collection of Profile descriptions associated with the Agent",
+          "items": {
+            "$ref": "#/definitions/Remark"
+          }
+        },
+        "webSites": {
+          "type": "array",
+          "description": "A collection of websites associated with the Agent",
+          "items": {
+            "$ref": "#/definitions/Website"
+          }
+        },
+        "licenseInfo": {
+          "type": "array",
+          "description": "A collection of licenses associated with the Agent",
+          "items": {
+            "$ref": "#/definitions/License"
+          }
+        },
+        "mlsInformation": {
+          "type": "array",
+          "description": "MLS numbers associated with the Agent",
+          "items": {
+            "$ref": "#/definitions/MLSNumber"
+          }
+        },
+        "isTeamMember": {
+          "type": "boolean",
+          "description": "Indicates whether the person is a team member or not."
+        }
+      }
+    },
+    "TeamSummary": {
+      "type": "object",
+      "required": [
+        "teamId"
+      ],
+      "properties": {
+        "teamId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Globally unique identifier assigned to a Team by Realogy"
+        },
+        "RFGTeamID": {
+          "type": "string",
+          "description": "A short unique identifier assigned to the Team by Realogy"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display Name of the Team"
+        },
+        "type": {
+          "type": "string",
+          "description": "Display Type of the Team"
+        },
+        "lastUpdateOn": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date/time in UTC when the team was last updated"
+        },
+        "office": {
+          "$ref": "#/definitions/OfficeSummary"
+        },
+        "emailAddress": {
+          "type": "string",
+          "description": "Email address of the team"
+        },
+        "websiteUrl": {
+          "type": "string",
+          "description": "Website URL of the team"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "Phone Number of the team"
+        },
+        "members": {
+          "type": "array",
+          "description": "Agents who are part of the Team",
+          "items": {
+            "$ref": "#/definitions/TeamMember"
+          }
+        }
+      }
+    },
+    "Team": {
+      "type": "object",
+      "properties": {
+        "teamSummary": {
+          "$ref": "#/definitions/TeamSummary"
+        },
+        "awards": {
+          "$ref": "#/definitions/AwardArray"
+        },
+        "addlPhoneNumbers": {
+          "type": "array",
+          "description": "Additional phone numbers of team",
+          "items": {
+            "$ref": "#/definitions/PhoneNumber"
+          }
+        },
+        "addlEmails": {
+          "type": "array",
+          "description": "Additional emails of team",
+          "items": {
+            "$ref": "#/definitions/Email"
+          }
+        },
+        "remarks": {
+          "type": "array",
+          "description": "Remarks of team",
+          "items": {
+            "$ref": "#/definitions/Remark"
+          }
+        },
+        "media": {
+          "$ref": "#/definitions/MediaArray"
+        },
+        "addlLanguageNames": {
+          "type": "array",
+          "description": "Additional languages spoken by the team",
+          "items": {
+            "$ref": "#/definitions/Language"
+          }
+        },
+        "addlWebSites": {
+          "type": "array",
+          "description": "A collection of websites associated with the Team",
+          "items": {
+            "$ref": "#/definitions/Website"
+          }
+        }
+      }
+    },
+    "Address": {
+      "type": "object",
+      "properties": {
+        "streetAddress": {
+          "type": "string",
+          "description": "Street address"
+        },
+        "city": {
+          "type": "string",
+          "description": "City"
+        },
+        "district": {
+          "type": "string",
+          "description": "Subdivision name in the country or region for the address. In USA it's same as County."
+        },
+        "stateProvince": {
+          "type": "string",
+          "description": "State/Province where the address is"
+        },
+        "stateProvinceCode": {
+          "type": "string",
+          "description": "ISO code of the state"
+        },
+        "postalCode": {
+          "type": "string",
+          "description": "ZIP/Postal code"
+        },
+        "country": {
+          "type": "string",
+          "description": "Country"
+        },
+        "countryCode": {
+          "type": "string",
+          "description": "ISO Code of the country"
+        },
+        "formattedAddress": {
+          "type": "string",
+          "description": "Formatted address for display purpose"
+        },
+        "latitude": {
+          "type": "number",
+          "format": "double",
+          "description": "Latitude of a location"
+        },
+        "longitude": {
+          "type": "number",
+          "format": "double",
+          "description": "Longitude of a location"
+        },
+        "geoCodeConfidenceLevel": {
+          "type": "string",
+          "description": "geoCode Confidence Level information"
+        }
+      }
+    },
+    "AreaServed": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Type of the area served (PostalCode, etc.)"
+        },
+        "items": {
+          "type": "array",
+          "description": "Name of the area served. It can be a list of PostalCodes, Cities, or some other localities",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Award": {
+      "type": "object",
+      "properties": {
+        "year": {
+          "type": "string",
+          "description": "The year in which the Award was received"
+        },
+        "type": {
+          "type": "string",
+          "description": "Name of the Award"
+        }
+      }
+    },
+    "AwardArray": {
+      "type": "array",
+      "description": "Collection of awards",
+      "items": {
+        "$ref": "#/definitions/Award"
+      }
+    },
+    "Email": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "The type of Email Address"
+        },
+        "address": {
+          "type": "string",
+          "description": "Email Address"
+        }
+      }
+    },
+    "GeographicRegion": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "The type of Geographic Region (Neighborhood, StateRegion, CountryRegion, etc.)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the geographic Region"
+        }
+      }
+    },
+    "PhoneNumber": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "The type of Phone Number"
+        },
+        "number": {
+          "type": "string",
+          "description": "Phone Number"
+        },
+        "prefix": {
+          "type": "string",
+          "description": "Any prefix (area code) associated with the Phone Number"
+        },
+        "suffix": {
+          "type": "string",
+          "description": "Any suffix (extension) associated with the Phone Number"
+        }
+      }
+    },
+    "Preference": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "The type of  Preference"
+        },
+        "value": {
+          "type": "boolean",
+          "description": "Return true or false"
+        }
+      }
+    },
+    "Website": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "The type of Website"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of Website"
+        },
+        "url": {
+          "type": "string",
+          "description": "URL for the website"
+        },
+        "contentLanguageCode": {
+          "type": "string",
+          "description": "The content language code for the website"
+        }
+      }
+    },
+    "Media": {
+      "type": "object",
+      "properties": {
+        "mediaId": {
+          "type": "string",
+          "description": "A globally unique identifier for the Media assigned by Realogy"
+        },
+        "sequenceNumber": {
+          "type": "string",
+          "description": "The display sequence number for the Media"
+        },
+        "url": {
+          "type": "string",
+          "description": "URL for the media"
+        },
+        "isDefault": {
+          "type": "boolean",
+          "description": "Indicates whether the media is the default media or not"
+        },
+        "caption": {
+          "type": "string",
+          "description": "Media caption"
+        },
+        "shortDescription": {
+          "type": "string",
+          "description": "Short description of the media"
+        },
+        "htmlDescription": {
+          "type": "string",
+          "description": "Short description of the media with HTML markup"
+        },
+        "format": {
+          "type": "string",
+          "description": "The format of the media (Image, URL, etc.)"
+        },
+        "category": {
+          "type": "string",
+          "description": "XXX"
+        },
+        "height": {
+          "type": "string",
+          "description": "Height (in pixels) of the Photo"
+        },
+        "width": {
+          "type": "string",
+          "description": "Width (in pixels) of the Photo"
+        },
+        "lastUpdateOn": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date/time in UTC when the media was last updated"
+        }
+      }
+    },
+    "MediaArray": {
+      "type": "array",
+      "description": "Collection of media for the property",
+      "items": {
+        "$ref": "#/definitions/Media"
+      }
+    },
+    "MLSNumber": {
+      "type": "object",
+      "properties": {
+        "number": {
+          "type": "string",
+          "description": "The unique identifier assigned to the entity by the MLS system"
+        },
+        "mlsId": {
+          "type": "string",
+          "description": "The MLS's unique identifier. This is not the MLS number for the entity"
+        },
+        "mlsName": {
+          "type": "string",
+          "description": "The name of the MLS system that assigned the identifier"
+        },
+        "isPrimary": {
+          "type": "boolean",
+          "description": "Indicates whether the mls number is primary or not"
+        }
+      }
+    },
+    "OfficeName": {
+      "type": "object",
+      "properties": {
+        "languageCode": {
+          "type": "string",
+          "description": "The ISO code of the language the name is in"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the Office"
+        },
+        "commercialName": {
+          "type": "string",
+          "description": "commercialName of the Office"
+        }
+      }
+    },
+    "PersonName": {
+      "type": "object",
+      "properties": {
+        "languageCode": {
+          "type": "string",
+          "description": "The ISO code of the language the name is in"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name of the Person"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the Person"
+        },
+        "middleName": {
+          "type": "string",
+          "description": "Middle name/initial of the Person"
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last Name of the person"
+        },
+        "suffix": {
+          "type": "string",
+          "description": "Name suffix (Jr., Sr., etc.)"
+        },
+        "familiarName": {
+          "type": "string",
+          "description": "Familiar name for the person"
+        },
+        "salutation": {
+          "type": "string",
+          "description": "Salutation associated with the name"
+        }
+      }
+    },
+    "Price": {
+      "type": "object",
+      "properties": {
+        "currencyCode": {
+          "type": "string",
+          "description": "The ISO code of the currency the price is in"
+        },
+        "amount": {
+          "type": "number",
+          "format": "double",
+          "description": "The monetary amount"
+        },
+        "isPriceUponRequest": {
+          "type": "boolean",
+          "description": "Denotes whether the asking price known only upon request or not"
+        }
+      }
+    },
+    "Remark": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Type of the remark"
+        },
+        "languageCode": {
+          "type": "string",
+          "description": "The ISO code of the language the name is in"
+        },
+        "remark": {
+          "type": "string",
+          "description": "The remark"
+        },
+        "htmlRemark": {
+          "type": "string",
+          "description": "The remark with HTML markup"
+        }
+      }
+    },
+    "Role": {
+      "type": "object",
+      "properties": {
+        "office": {
+          "$ref": "#/definitions/OfficeSummary"
+        },
+        "role": {
+          "type": "string",
+          "description": "The role description of the agent"
+        },
+        "isFullTime": {
+          "type": "boolean",
+          "description": "Will be 'true' if the role is fulltime"
+        },
+        "isProducingRole": {
+          "type": "boolean",
+          "description": "Will be 'true' if the role is a producing role"
+        }
+      }
+    },
+    "Language": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Language ISO code (3166-2)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Language name"
+        }
+      }
+    },
+    "OpenHouse": {
+      "type": "object",
+      "properties": {
+        "startOn": {
+          "type": "string",
+          "description": "The date/time that the Open House starts at"
+        },
+        "endOn": {
+          "type": "string",
+          "description": "The date/time that the Open House ends"
+        },
+        "isByAppointment": {
+          "type": "boolean",
+          "description": "A 'true' indicates that the Open House is by appointment only"
+        },
+        "isShowOnInternet": {
+          "type": "boolean",
+          "description": "Denotes whether to show Listing on Internet"
+        },
+        "remarks": {
+          "type": "string",
+          "description": "Any remarks associated with the Open House"
+        }
+      }
+    },
+    "PropertyFeature": {
+      "type": "object",
+      "properties": {
+        "groupName": {
+          "type": "string",
+          "description": "The group that the feature belongs in"
+        },
+        "description": {
+          "type": "string",
+          "description": "The property feature"
+        }
+      }
+    },
+    "PropertyFee": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "The type of Fee associated with the property"
+        },
+        "amount": {
+          "type": "string",
+          "description": "Amount "
+        },
+        "frequency": {
+          "type": "string",
+          "description": "The frequency the fee is paid at. For example, Monthly, Annually, Bi-Monthly, etc."
+        }
+      }
+    },
+    "Room": {
+      "type": "object",
+      "properties": {
+        "sequenceNumber": {
+          "type": "string",
+          "description": "Display sequence mumber for the Room"
+        },
+        "level": {
+          "type": "string",
+          "description": "The level of the property that the Room is in"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the room"
+        },
+        "dimensions": {
+          "type": "string",
+          "description": "Dimensions of the room"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the room"
+        }
+      }
+    },
+    "School": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Type of the school (Elementary, Middle, etc.)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the school"
+        },
+        "distanceFromSchool": {
+          "type": "string",
+          "description": "The distance the school is at from the Property"
+        },
+        "district": {
+          "type": "string",
+          "description": "The 'district' that the school belongs to"
+        }
+      }
+    },
+    "MultiUnit": {
+      "type": "object",
+      "properties": {
+        "unitName": {
+          "type": "string",
+          "description": "Name of the Unit"
+        },
+        "bedRoom": {
+          "type": "string",
+          "description": "Number of Bedrooms in a unit located in the property."
+        },
+        "threeQuarterBath": {
+          "type": "string",
+          "description": "The threeQuarterBath details of the unit."
+        },
+        "quarterBath": {
+          "type": "string",
+          "description": "The quarterBath details of the unit."
+        },
+        "fullBath": {
+          "type": "string",
+          "description": "The fullBath details of the unit."
+        },
+        "halfBath": {
+          "type": "string",
+          "description": "The halfBath details of the unit."
+        }
+      }
+    },
+    "Tax": {
+      "type": "object",
+      "properties": {
+        "year": {
+          "type": "string",
+          "description": "The year for which the tax amount is applicable"
+        },
+        "amount": {
+          "type": "number",
+          "format": "double",
+          "description": "The monetary amount"
+        },
+        "description": {
+          "type": "string",
+          "description": "Any description associated with the Tax"
+        }
+      }
+    },
+    "License": {
+      "type": "object",
+      "required": [
+        "number"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Type of license"
+        },
+        "countryCode": {
+          "type": "string",
+          "description": "The ISO code of the country the license was issued in"
+        },
+        "stateCode": {
+          "type": "string",
+          "description": "The code of the State/Province the license was issued in"
+        },
+        "number": {
+          "type": "string",
+          "description": "The license number"
+        },
+        "issuedOn": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date on which the license was issued"
+        }
+      }
+    },
+    "GeneralError": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "description": "Error message"
+        },
+        "trace_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique id associated with the error. Use this trace id when you contact support for any error."
+        },
+        "error_codes": {
+          "type": "array",
+          "description": "List of error codes. You can use these to understand the reason of failure better. User these values when you contact support for any error",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "SubUnit": {
+      "type": "object",
+      "properties": {
+        "area": {
+          "type": "string",
+          "description": "The area for the SubUnit"
+        },
+        "bayDepth": {
+          "type": "string",
+          "description": "The Bay Depth for the SubUnit"
+        },
+        "columnSpacing": {
+          "type": "string",
+          "description": "The distance between posts or vertical supporting beams in an industrial building"
+        },
+        "currencyCode": {
+          "type": "string",
+          "description": "The Currency Code for the SubUnit"
+        },
+        "fullBath": {
+          "type": "number",
+          "format": "short",
+          "description": "The number of full baths in the property"
+        },
+        "halfBath": {
+          "type": "number",
+          "format": "short",
+          "description": "The number of half baths in the property"
+        },
+        "isVacant": {
+          "type": "number",
+          "format": "short",
+          "description": "Indicates True if sub unit Vacant"
+        },
+        "leaseTerm": {
+          "type": "string",
+          "description": "The Lease Term for the sub unit"
+        },
+        "noOfBedRooms": {
+          "type": "number",
+          "format": "short",
+          "description": "The Number of bedrooms for the sub unit"
+        },
+        "suiteName": {
+          "type": "string",
+          "description": "The suite name of the property"
+        },
+        "rate": {
+          "type": "number",
+          "format": "decimal",
+          "description": "The List price or Lease rate or rental value at which the sub unit is available"
+        }
+      }
+    },
+    "Floor": {
+      "type": "object",
+      "properties": {
+        "floorDescription": {
+          "type": "string",
+          "description": "The Description for the floor"
+        },
+        "floorName": {
+          "type": "string",
+          "description": "The name of the floor on the property. For example top floor, mezzanine floor etc"
+        },
+        "length": {
+          "type": "number",
+          "format": "decimal",
+          "description": "The length of the floor"
+        },
+        "unitOfMeasure": {
+          "type": "string",
+          "description": "The Unit description of measurement of the floor"
+        },
+        "width": {
+          "type": "number",
+          "format": "decimal",
+          "description": "The width of the floor"
+        }
+      }
+    }
+  },
+  "tags": []
+}
