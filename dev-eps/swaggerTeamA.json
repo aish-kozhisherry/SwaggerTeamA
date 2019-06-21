@@ -5,7 +5,7 @@
     "title" : "Dash API"
   },
   "host" : "stg.api.realogyfg.com",
-  "basePath" : "/v2/xxx/dashapi",
+  "basePath" : "/v2/xxx/DASHapi",
   "tags" : [ ],
   "schemes" : [ "https" ],
   "security" : [ {
