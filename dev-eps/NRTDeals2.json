@@ -1,0 +1,611 @@
+{
+  "swagger" : "2.0",
+  "info" : {
+    "version" : "0",
+    "title" : "NRT Deal - API"
+  },
+  "basePath" : "/DEV03/Deal",
+  "schemes": [
+    "https"
+  ],
+  "host": "nrtapi.realogy.com",
+  "paths" : {
+    "/api/v{version}/Deal" : {
+      "post" : {
+        "tags" : [ "Deal" ],
+        "summary" : "HomeBase endpoint for creating a new Trident deal",
+        "operationId" : "ApiV{versionDealPost",
+        "consumes" : [ "application/json-patch+json", "application/json", "text/json", "application/*+json" ],
+        "produces" : [ ],
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "request",
+          "description" : "",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/definitions/DealRequestModel"
+          }
+        }, {
+          "name" : "version",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "Accept",
+          "in" : "header",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Success"
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "Deal" ],
+        "summary" : "HomeBase endpoint for updating an existing Trident deal",
+        "operationId" : "ApiV{versionDealPut",
+        "consumes" : [ "application/json-patch+json", "application/json", "text/json", "application/*+json" ],
+        "produces" : [ ],
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "request",
+          "description" : "",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/definitions/DealRequestModel"
+          }
+        }, {
+          "name" : "version",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "If-Match",
+          "in" : "header",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "Accept",
+          "in" : "header",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Success"
+          }
+        }
+      }
+    },
+    "/api/v{version}/FDStagedTransaction" : {
+      "post" : {
+        "tags" : [ "FDStagedTransaction" ],
+        "summary" : "Creates first data staging transaction record",
+        "operationId" : "ApiV{versionFDStagedTransactionPost",
+        "consumes" : [ "application/json-patch+json", "application/json", "text/json", "application/*+json" ],
+        "produces" : [ ],
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "StagingTransaction",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/definitions/FDStagingTransactionModelRequest"
+          }
+        }, {
+          "name" : "version",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Success"
+          }
+        }
+      }
+    },
+    "/api/v{version}/FDStagedTransaction/{TranIdentKey}" : {
+      "put" : {
+        "tags" : [ "FDStagedTransaction" ],
+        "operationId" : "ApiV{versionFDStagedTransactionByTranIdentKeyPut",
+        "consumes" : [ "application/json-patch+json", "application/json", "text/json", "application/*+json" ],
+        "produces" : [ ],
+        "parameters" : [ {
+          "name" : "TranIdentKey",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "in" : "body",
+          "name" : "StagingTransaction",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/definitions/FDStagingTransactionModelRequest"
+          }
+        }, {
+          "name" : "version",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "If-Match",
+          "in" : "header",
+          "required" : false,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Success"
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "FDStagedTransaction" ],
+        "operationId" : "ApiV{versionFDStagedTransactionByTranIdentKeyDelete",
+        "consumes" : [ ],
+        "produces" : [ ],
+        "parameters" : [ {
+          "name" : "TranIdentKey",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "version",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "name" : "If-Match",
+          "in" : "header",
+          "required" : false,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Success"
+          }
+        }
+      }
+    }
+  },
+  "securityDefinitions" : {
+    "oauth2" : {
+      "description" : "Standard Authorization header using the Bearer scheme. Example: \"bearer {token}\"",
+      "type" : "apiKey",
+      "name" : "Authorization",
+      "in" : "header"
+    }
+  },
+  "definitions" : {
+    "DealRequestModel" : {
+      "type" : "object",
+      "properties" : {
+        "tridentDealNumber" : {
+          "type" : "string"
+        },
+        "listingSide" : {
+          "$ref" : "#/definitions/DealSideModel"
+        },
+        "saleSide" : {
+          "$ref" : "#/definitions/DealSideModel"
+        }
+      }
+    },
+    "DealSideModel" : {
+      "type" : "object",
+      "properties" : {
+        "dealInfo" : {
+          "$ref" : "#/definitions/DealInfoModel"
+        },
+        "property" : {
+          "$ref" : "#/definitions/PropertyInfoModel"
+        },
+        "agents" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/AgentInfoModel"
+          }
+        },
+        "clients" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/ClientInfoModel"
+          }
+        },
+        "dates" : {
+          "$ref" : "#/definitions/DatesModel"
+        },
+        "finance" : {
+          "$ref" : "#/definitions/FinanceModel"
+        }
+      }
+    },
+    "DealInfoModel" : {
+      "type" : "object",
+      "properties" : {
+        "metroCode" : {
+          "type" : "string"
+        },
+        "tridentRefNumber" : {
+          "type" : "string"
+        },
+        "homeBaseID" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "transactionID" : {
+          "type" : "string"
+        },
+        "dealType" : {
+          "type" : "string"
+        },
+        "dealSide" : {
+          "type" : "string"
+        },
+        "transactionStatus" : {
+          "type" : "string"
+        },
+        "busPurpose" : {
+          "type" : "string"
+        },
+        "sourceOfLead" : {
+          "type" : "string"
+        },
+        "salePrice" : {
+          "type" : "number",
+          "format" : "float"
+        },
+        "listingPrice" : {
+          "type" : "number",
+          "format" : "float"
+        },
+        "commissionPct" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "commissionFlatFee" : {
+          "type" : "number",
+          "format" : "double"
+        }
+      }
+    },
+    "PropertyInfoModel" : {
+      "type" : "object",
+      "properties" : {
+        "address1" : {
+          "type" : "string"
+        },
+        "address2" : {
+          "type" : "string"
+        },
+        "suiteNum" : {
+          "type" : "string"
+        },
+        "city" : {
+          "type" : "string"
+        },
+        "state" : {
+          "type" : "string"
+        },
+        "zip" : {
+          "type" : "string"
+        },
+        "zipPlusFour" : {
+          "type" : "string"
+        },
+        "county" : {
+          "type" : "string"
+        },
+        "municipality" : {
+          "type" : "string"
+        },
+        "subdivision" : {
+          "type" : "string"
+        },
+        "lot" : {
+          "type" : "string"
+        },
+        "block" : {
+          "type" : "string"
+        },
+        "mlsid" : {
+          "type" : "string"
+        },
+        "squareFootage" : {
+          "type" : "string"
+        }
+      }
+    },
+    "AgentInfoModel" : {
+      "type" : "object",
+      "properties" : {
+        "type" : {
+          "type" : "string"
+        },
+        "isPrimary" : {
+          "type" : "boolean"
+        },
+        "personID" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "branchCode" : {
+          "type" : "string"
+        },
+        "bud" : {
+          "type" : "string"
+        },
+        "firstName" : {
+          "type" : "string"
+        },
+        "middleName" : {
+          "type" : "string"
+        },
+        "lastName" : {
+          "type" : "string"
+        },
+        "address1" : {
+          "type" : "string"
+        },
+        "address2" : {
+          "type" : "string"
+        },
+        "suiteNum" : {
+          "type" : "string"
+        },
+        "city" : {
+          "type" : "string"
+        },
+        "state" : {
+          "type" : "string"
+        },
+        "zip" : {
+          "type" : "string"
+        },
+        "zipPlusFour" : {
+          "type" : "string"
+        },
+        "county" : {
+          "type" : "string"
+        },
+        "country" : {
+          "type" : "string"
+        },
+        "phone" : {
+          "type" : "string"
+        },
+        "email" : {
+          "type" : "string"
+        },
+        "fax" : {
+          "type" : "string"
+        },
+        "splitPercentage" : {
+          "type" : "number",
+          "format" : "float"
+        },
+        "commissionFlatFee" : {
+          "type" : "number",
+          "format" : "float"
+        }
+      }
+    },
+    "ClientInfoModel" : {
+      "type" : "object",
+      "properties" : {
+        "organization" : {
+          "type" : "string"
+        },
+        "salutation" : {
+          "type" : "string"
+        },
+        "type" : {
+          "type" : "string"
+        },
+        "firstName" : {
+          "type" : "string"
+        },
+        "middleName" : {
+          "type" : "string"
+        },
+        "lastName" : {
+          "type" : "string"
+        },
+        "address1" : {
+          "type" : "string"
+        },
+        "address2" : {
+          "type" : "string"
+        },
+        "suiteNum" : {
+          "type" : "string"
+        },
+        "city" : {
+          "type" : "string"
+        },
+        "state" : {
+          "type" : "string"
+        },
+        "zip" : {
+          "type" : "string"
+        },
+        "zipPlusFour" : {
+          "type" : "string"
+        },
+        "county" : {
+          "type" : "string"
+        },
+        "country" : {
+          "type" : "string"
+        },
+        "phone" : {
+          "type" : "string"
+        },
+        "email" : {
+          "type" : "string"
+        },
+        "fax" : {
+          "type" : "string"
+        }
+      }
+    },
+    "DatesModel" : {
+      "type" : "object",
+      "properties" : {
+        "listingDate" : {
+          "type" : "string"
+        },
+        "offerDate" : {
+          "type" : "string"
+        },
+        "expirationDate" : {
+          "type" : "string"
+        },
+        "contractDate" : {
+          "type" : "string"
+        },
+        "estimatedClosingDate" : {
+          "type" : "string"
+        }
+      }
+    },
+    "FinanceModel" : {
+      "type" : "object",
+      "properties" : {
+        "paymentType" : {
+          "type" : "string"
+        },
+        "earnestMoney" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "checkNum" : {
+          "type" : "string"
+        },
+        "earnestRcvdDate" : {
+          "type" : "string"
+        }
+      }
+    },
+    "FDStagingTransactionModelRequest" : {
+      "type" : "object",
+      "properties" : {
+        "fdstgTransactionId" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "paymentDate" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "checkTypeId" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "paymentTypeId" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "paymentAmt" : {
+          "type" : "number",
+          "format" : "double"
+        },
+        "payerName" : {
+          "type" : "string"
+        },
+        "referenceNbr" : {
+          "type" : "string"
+        },
+        "retailNetId" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "transactionType" : {
+          "type" : "string"
+        },
+        "serviceName" : {
+          "type" : "string"
+        },
+        "isAutoAccept" : {
+          "type" : "boolean"
+        },
+        "tranIdentGuid" : {
+          "type" : "string"
+        },
+        "responseType" : {
+          "type" : "string"
+        },
+        "tcecastatus" : {
+          "type" : "string"
+        },
+        "tcdisplayTxt" : {
+          "type" : "string"
+        },
+        "systemCode" : {
+          "type" : "string"
+        },
+        "checkType" : {
+          "type" : "string"
+        },
+        "traceId" : {
+          "type" : "string"
+        },
+        "denialNbr" : {
+          "type" : "string"
+        },
+        "responseCode" : {
+          "type" : "string"
+        },
+        "isTranSuccess" : {
+          "type" : "boolean"
+        },
+        "tranResponseMsgTxt" : {
+          "type" : "string"
+        },
+        "fdstgTransactionStatusId" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "fdstgTransactionStatusDesc" : {
+          "type" : "string"
+        },
+        "sourceApplicationID" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "transactionItems" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/FDStagingTransactionItemModel"
+          }
+        },
+        "version" : {
+          "type" : "string"
+        }
+      }
+    },
+    "FDStagingTransactionItemModel" : {
+      "type" : "object",
+      "properties" : {
+        "fdstgTransactionItemId" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "fdstgTransactionId" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "fdtransactionItemTypeId" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "fdtransactionItemValue" : {
+          "type" : "integer",
+          "format" : "int32"
+        }
+      }
+    }
+  }
+}
