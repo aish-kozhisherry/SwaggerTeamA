@@ -1,0 +1,181 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Dash API KLO Secured",
+    "version": "1.0"
+  },
+  "host": "test-rlgy-qa.apigee.net",
+  "basePath": "/v1/dashapiv2qa",
+  "schemes": [
+    "https"
+  ],
+  "paths": {
+    "/batches/{batchId}": {
+      "get": {
+        "description": "<remarks>\r\n  <input type=\"button\" value=\"Show/Hide\" onclick=\"$('#GETBATCH').toggle();\" />\r\n  <div id=\"GETBATCH\">\r\n    <ul>\r\n      <li>This method will be used to get the status of the submitted entities for a given batch by supplying the batch id</li>\r\n    </ul>\r\n    <div class=\"businessRule\">\r\n      <br />\r\n      <b>\r\n        <u>Business Rules:</u>\r\n      </b>\r\n      <ol>\r\n        <li>If Batch ID supplied does not exists in our system, API will return �HTTP 404 - Not Found� status code</li>\r\n      </ol>\r\n    </div>\r\n  </div>\r\n</remarks>",
+        "operationId": "Batches_Get",
+        "summary": "Batches_Get",
+        "tags": [
+          "Batches"
+        ],
+        "parameters": [
+          { "name": "Authorization",
+            "description": "This parameter represents the Authorization token obtained from the OKTA Authorization server. It is the Bearer token provided to authorize the consumer. Usage Authorization : Bearer token",
+            "in": "header",
+            "required": true,
+             "type": "string"
+          },
+           { "name": "apiKey",
+            "description": "This parameter represents the API Key provided for the consumption of this resource. It is provided as the client_id when creating an associated App",
+            "in": "header",
+            "required": true,
+             "type": "string"
+          },
+          {
+            "name": "batchId",
+            "in": "path",
+            "description": "Format - int32. This parameter represents the Batch ID",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+                  
+      "examples": {
+              
+                "entityType": "Transaction",
+				"status": "Processing",
+				"successEntities": [],
+				"failureEntities": []
+              }
+            }
+          },
+      "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/errorResponse"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/errorResponse"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/errorResponse"
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "schema": {
+              "$ref": "#/definitions/errorResponse"
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "schema": {
+              "$ref": "#/definitions/errorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "$ref": "#/definitions/errorResponse"
+            }
+          }
+        },
+        "produces": [
+          "application/vnd.realogyfg.v1+json"
+        ]
+      }
+    }
+},
+  "definitions": {
+  "errorResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "info": {
+          "type": "string"
+        }
+      }
+    },
+	"BatchResult": {
+      "description": "This class represents the Batch Result",
+      "type": "object",
+      "properties": {
+        "entityType": {
+          "description": "This attribute represents the type of Entity. Entity can be of either Staff, Listing or Transaction",
+          "type": "string"
+        },
+        "status": {
+          "description": "This attribute represents the status of the batch",
+          "type": "string"
+        },
+        "successEntities": {
+          "description": "This attribute represents the successfully submitted entities.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SuccessEntity"
+          }
+        },
+        "failureEntities": {
+          "description": "This attribute represents the entities that are failed.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FailureEntity"
+          }
+        }
+      }
+    },
+	"FailureEntity": {
+      "description": "This Class represents the Failure Entities",
+      "type": "object",
+      "properties": {
+        "entityGuid": {
+          "format": "uuid",
+          "description": "This attribute represents the GUID information of the entity",
+          "type": "string",
+          "example": "de305d54-75b4-431b-adb2-eb6b9e546014"
+        },
+        "providerIdentifier": {
+          "description": "This attribute represents the identifier used to represent the respective entity.",
+          "type": "string"
+        },
+        "errorMessages": {
+          "description": "This attribute represents the failure text information of the failed entities",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+	 "SuccessEntity": {
+      "description": "This Class represents theSuccess Entity class",
+      "type": "object",
+      "properties": {
+        "entityGuid": {
+          "format": "uuid",
+          "description": "This attribute represents the GUID information of the respective entity.",
+          "type": "string",
+          "example": "de305d54-75b4-431b-adb2-eb6b9e546014"
+        },
+        "providerIdentifier": {
+          "description": "This attribute represents the identifier used to represent the respective entity.",
+          "type": "string"
+        }
+      }
+    }
+}
+}
